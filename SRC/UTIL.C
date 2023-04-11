@@ -23,7 +23,7 @@ SOFTWARE. */
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+
 #include "UTIL.H"
 
 char *read_file(char* name) {
