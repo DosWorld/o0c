@@ -22,6 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "UTIL.H"
 #include "RISC.H"
 #include "PARSER.H"
@@ -30,7 +34,7 @@ char* filename;
 INTEGER code_length;
 INTEGER entry;
 INTEGER* code;
-String source_text;
+char *source_text;
 
 char *basename(char *n) {
         int i;
@@ -58,6 +62,7 @@ int main(int argc, char* argv[]) {
         // printf("RISC OUTPUT BEGIN\n");
         R_execute(entry * R_WORD_SIZE);
         // printf("RISC OUTPUT END\n");
+        free(source_text);
     }
     return 0;
 }

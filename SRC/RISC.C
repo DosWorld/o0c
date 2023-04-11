@@ -22,6 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "UTIL.H"
 #include "RISC.H"
 
@@ -60,7 +64,6 @@ static INTEGER M[R_MEM_SIZE / R_WORD_SIZE];
 #define ASH(x, s) ((x) << (s))
 
 INTEGER R_mod(INTEGER x, INTEGER y) {
-    require("valid divisor", y != 0);
     x = x % y;
     if(y < 0 ) {
         y = -y;
@@ -68,7 +71,6 @@ INTEGER R_mod(INTEGER x, INTEGER y) {
     while(x < 0 ) {
         x += y;
     }
-    ensure("valid remainder", 0 <= x && x < y);
     return x;
 }
 
@@ -175,10 +177,6 @@ before.
 */
 void R_execute(INTEGER start) {
     INTEGER opc, a, b, c, nextPC;
-
-    require("valid start", start >= 0
-            && R_PROG_ORG + start + R_WORD_SIZE <= R_MEM_SIZE
-            && (start & 0x3) == 0);
     R[14] = 0;
     R[15] = start + R_PROG_ORG;
 
@@ -308,7 +306,7 @@ void R_execute(INTEGER start) {
             nextPC = R[c & 0xf];
             break;
         default:
-            exit_if(true, "invalid opcode (%d)", opc);
+            exit_if(1, "invalid opcode (%d)", opc);
         };
         if(nextPC == 0 ) {
             break;
@@ -323,8 +321,6 @@ Loads the code words into memory. The length refers to the number of code words
 */
 void R_load(INTEGER* code, INTEGER len) {
     INTEGER i;
-    require_not_null(code);
-    require("valid length", len >= 0 && R_PROG_ORG + R_WORD_SIZE * len <= R_MEM_SIZE);
     for(i = 0; i < len; i++ ) {
         M[i + R_PROG_ORG / R_WORD_SIZE] = code[i];
     }
@@ -332,8 +328,6 @@ void R_load(INTEGER* code, INTEGER len) {
 
 void R_print_code(INTEGER* code, INTEGER len) {
     INTEGER i;
-    require_not_null(code);
-    require("not negative", len >= 0);
     for(i = 0; i < len; i++ ) {
         printf("%3ld ", i);
         R_print_instruction(code[i]);
@@ -357,7 +351,6 @@ void R_print_memory(int from, int to, int row_length) {
     }
     i = from;
     while(i < to ) {
-        assert("valid index", 0 <= i && i < R_MEM_SIZE);
         for(j = 0; j < row_length; j++ ) {
             printf("%4ld: %6ld ", i, M[i]);
             i++;
