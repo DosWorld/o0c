@@ -26,7 +26,7 @@ make
 
 ```sh
 cd examples
-..\src\o0c QSORT.MOD
+..\o0c QSORT.MOD
 ```
 
 ## Structure
@@ -34,9 +34,9 @@ cd examples
 The port of the Oberon-0 compiler is structured as follows: `scan.c` contains
 the scanner. It performs lexical analysis, i.e., it transforms Oberon-0
 source text into a stream of symbols (tokens). Syntax analysis is done
-by `parser.d.c`. The structure of the recursive descent parser directly
+by `parser.c`. The structure of the recursive descent parser directly
 mirrors the Oberon-0 EBNF grammar, given below. The parser calls functions
-in `generator.d.c` to emit code for the RISC processor. The parser also checks
+in `gen.c` to emit code for the RISC processor. The parser also checks
 types, ranges of constants, etc.
 The compiler is a non-opt imizing single-pass compiler. A simulator of the
 RISC processor is located in `risc.c`.
