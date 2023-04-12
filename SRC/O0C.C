@@ -22,9 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "UTIL.H"
 #include "RISC.H"
 #include "PARSER.H"
@@ -55,13 +52,12 @@ int main(int argc, char* argv[]) {
     }
     filename = argv[1];
     source_text = read_file(filename);
-    if(P_compile(source_text, &code, &code_length, &entry) ) {
-        // R_print_code(code, code_length);
+    if(P_compile(filename, source_text, &code, &code_length, &entry) ) {
+        R_print_code(code, code_length);
         R_load(code, code_length);
-        // printf("RISC OUTPUT BEGIN\n");
+        printf("RISC OUTPUT BEGIN\n");
         R_execute(entry * R_WORD_SIZE);
-        // printf("RISC OUTPUT END\n");
-        free(source_text);
+        printf("RISC OUTPUT END\n");
     }
     return 0;
 }

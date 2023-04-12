@@ -22,10 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "UTIL.H"
 #include "RISC.H"
 #include "SCAN.H"
@@ -92,7 +88,7 @@ G_Item G_make_item(void) {
 G_Type* G_new_type(G_Form form, size_t size) {
     G_Type *t;
     // require("valid size", size >= 0);
-    t = calloc(1, sizeof(G_Type));
+    t = xcalloc(1, sizeof(G_Type));
     t->form = form;
     t->size = size;
     return t;
@@ -142,10 +138,12 @@ void G_print_type(G_Type* t) {
 }
 
 static void get_register(INTEGER* r) {
+    require("register free", *r < 0 || *r >= FP);
     int i = 0;
     while(i < FP && in(i, registers) ) {
         i++;
     }
+    panic_if(i >= FP, "no free register found");
     incl(&registers, i);
     *r = i;
 }
@@ -159,11 +157,15 @@ static void free_register(/*inout*/INTEGER* r) {
 }
 
 static void put(INTEGER op, INTEGER a, INTEGER b, INTEGER c) {
+    require("valid operation", op < BEQ);
+    require("code array not full", G_pc < G_MAX_CODE);
     G_code[G_pc++] = R_encode_instruction(op, a, b, c);
     report_instruction(G_pc - 1);
 }
 
 static void put_BR(INTEGER op, INTEGER disp) {
+    require("valid operation", op >= BEQ);
+    require("code array not full", G_pc < G_MAX_CODE);
     G_code[G_pc++] = R_encode_instruction(op, 0, 0, disp);
     report_instruction(G_pc - 1);
 }
@@ -176,6 +178,7 @@ static void test_range(INTEGER x) {
 }
 
 static void load(G_Item* x) {
+    require("not in Reg mode", x->mode != Reg);
     INTEGER r = -1;
     if(x->mode == Var ) {
         if(x->r == PC ) {
@@ -192,7 +195,7 @@ static void load(G_Item* x) {
         put(MOVI, x->r, 0, x->a);
         x->mode = Reg;
     } else {
-        exit_if(1, "wrong mode %s", class_mode_names[x->mode].name);
+        exit_if(true, "wrong mode %s", class_mode_names[x->mode].name);
     }
 };
 
@@ -219,6 +222,7 @@ Emits an operation of the form x := x OP y. The operations are:
 MOV, MVN, ADD, SUB, MUL, Div, Mod, CMP.
 */;
 static void put_op(INTEGER op, G_Item* x, G_Item* y) {
+    require("valid range", MOV <= op && op <= CMP);
     if(x->mode != Reg ) {
         load(x);
     }
@@ -251,7 +255,7 @@ static INTEGER merged(INTEGER L0, INTEGER L1) {
     INTEGER L2, L3;
     if(L0 != 0 ) {
         L2 = L0;
-        while(1) {
+        while(true ) {
             L3 = G_code[L2] & 0x03ffffff;
             if(L3 == 0 ) {
                 break;
@@ -267,6 +271,7 @@ static INTEGER merged(INTEGER L0, INTEGER L1) {
 }
 
 void G_fix(INTEGER at, INTEGER with) {
+    assert("branch instruction at destination", ((G_code[at] >> 26) & 0x3f) >= BEQ);
     G_code[at] = (G_code[at] & 0xfc000000) | (with & 0x03ffffff);
     report_instruction(at);
 }
@@ -290,6 +295,7 @@ void G_fix_link(INTEGER L) {
 }
 
 void G_inc_level(size_t n) {
+    require("valid offset", n == -1 || n == 1);
     G_current_level += n;
 }
 
@@ -298,6 +304,7 @@ Creates a constant value. It is not directly emmited as code, but stored in the
 item. Most likely, it will later be used in an immediate-mode instruction.
 */;
 void G_make_const_item(/*out*/G_Item* x, G_Type* type, INTEGER value) {
+    require("register not in use", x->r == -1 || x->r >= FP);
     x->mode = Const;
     x->type = type;
     x->a = value;
@@ -346,12 +353,15 @@ void G_item_from_object(/*out*/G_Item* x, /*in*/G_Object* y) {
 };
 
 void G_field(/*inout*/G_Item* x, /*in*/G_Object* y) {
+    require("x is a record", x->type->form == Record);
     x->a += y->value;
     x->type = y->type;
 };
 
 
 void G_index(/*inout*/G_Item* x, /*in*/G_Item* y) {
+    require("x is an array", x->type->form == Array);
+    require("valid mode", x->mode == Var || x->mode == Const);
     if(y->type != G_int_type ) {
         S_mark("index not integer");
     }
@@ -493,6 +503,7 @@ Emits code to check the given relation. The relations are: s_eql = 9, s_neq =
 10, s_lss = 11, s_geq = 12, s_leq = 13, s_gtr = 14 (see scanner symbols)
 */;
 void G_relation(S_Symbol op, /*inout*/G_Item* x, /*in*/G_Item* y) {
+    require("valid relation", s_eql <= op && op <= s_gtr);
     if(x->type->form != Integer || y->type->form != Integer ) {
         S_mark("bad type");
     } else {
@@ -509,18 +520,18 @@ void G_relation(S_Symbol op, /*inout*/G_Item* x, /*in*/G_Item* y) {
 Checks if type1 is a legal actual parameter type for the formal parameter type
 type2.
 */;
-static char parameter_compatible(G_Type* actual_type, G_Type* formal_type) {
+static bool parameter_compatible(G_Type* actual_type, G_Type* formal_type) {
     if(actual_type == G_undefined_type || formal_type == G_undefined_type ) {
-        return 0;
+        return false;
     }
     if(actual_type->form != formal_type->form ) {
-        return 0;
+        return false;
     }
     if(actual_type->form == Integer ) {
-        return 1;
+        return true;
     }
     if(actual_type->form == Boolean ) {
-        return 1;
+        return true;
     }
     if(actual_type->form == Array ) {
         return actual_type->len == formal_type->len && \
@@ -529,17 +540,21 @@ static char parameter_compatible(G_Type* actual_type, G_Type* formal_type) {
     if(actual_type->form == Record ) {
         return actual_type == formal_type;
     }
-    return 0;
+    return false;
 }
 
 
-static char assignment_compatible(G_Type* destination, G_Type* source) {
+static bool assignment_compatible(G_Type* destination, G_Type* source) {
     return parameter_compatible(destination, source);
 }
 
 static void store_array(G_Item* x, G_Item* y) {
-    size_t size = x->type->size;
+    int size = x->type->size;
     INTEGER cap = -1, src = -1, dst = -1, r = -1;
+    require("destination is array", x->type->form == Array);
+    require("source is array", y->type->form == Array);
+    require("valid mode", x->mode == Var);
+    require("valid mode", y->mode == Var);
     get_register(&cap);
     get_register(&src);
     get_register(&dst);
@@ -559,8 +574,10 @@ static void store_array(G_Item* x, G_Item* y) {
 };
 
 static void store_record(G_Item* x, G_Item* y) {
-    size_t size = x->type->size;
+    int size = x->type->size;
     INTEGER cap = -1, src = -1, dst = -1, r = -1;
+    require("destination is record", x->type->form == Record);
+    require("source is record", y->type->form == Record);
     get_register(&cap);
     get_register(&src);
     get_register(&dst);
@@ -581,10 +598,9 @@ static void store_record(G_Item* x, G_Item* y) {
 
 
 void G_store(/*inout*/G_Item* x, /*in*/G_Item* y) {
-    G_Form x_form;
-    if(assignment_compatible(x->type, y->type)) {
-        x_form = x->type->form;
-        if(x_form == Integer || x_form == Boolean) {
+    if(assignment_compatible(x->type, y->type) ) {
+        G_Form x_form = x->type->form;
+        if(x_form == Integer || x_form == Boolean ) {
             if(y->mode == Cond ) {
                 put_BR(BEQ + negated(y->c), y->a);
                 free_register(&y->r);
@@ -595,21 +611,21 @@ void G_store(/*inout*/G_Item* x, /*in*/G_Item* y) {
                 put_BR(BR, 2);
                 G_fix_link(y->a);
                 put(MOVI, y->r, 0, 0);
-            } else if(y->mode != Reg) {
+            } else if(y->mode != Reg ) {
                 load(y);
             }
-            if(x->mode == Var) {
+            if(x->mode == Var ) {
                 put(STW, y->r, x->r, x->a - G_pc * 4 * (x->r == PC));
             } else {
                 S_mark("illegal assignment");
             }
             free_register(&x->r);
             free_register(&y->r);
-        } else if(x_form == Array) {
+        } else if(x_form == Array ) {
             store_array(x, y);
             free_register(&x->r);
             free_register(&y->r);
-        } else if(x_form == Record) {
+        } else if(x_form == Record ) {
             store_record(x, y);
             free_register(&x->r);
             free_register(&y->r);
@@ -628,10 +644,11 @@ so, generates code to push the parameter onto the stack.
 void G_parameter(G_Item* x, G_Type* fp_type, G_ClassMode fp_class) {
     INTEGER a, r;
     if(parameter_compatible(x->type, fp_type) ) {
-        if(fp_class == Par) {
-            if(x->mode == Var) {
+        if(fp_class == Par ) {
+
+            if(x->mode == Var ) {
                 a = x->a;
-                if(x->r == PC) {
+                if(x->r == PC ) {
                     a -= 4 * G_pc;
                 }
                 if(a != 0 ) {
@@ -644,12 +661,13 @@ void G_parameter(G_Item* x, G_Type* fp_type, G_ClassMode fp_class) {
             } else {
                 S_mark("illegal parameter mode");
             }
-        } else if(fp_class == Var) {
-            if(x->mode != Reg) {
+        } else if(fp_class == Var ) {
+
+            if(x->mode != Reg ) {
                 load(x);
             }
         } else {
-            exit_if(1, "invalid parameter class %d", fp_class);
+            exit_if(true, "invalid parameter class %d", fp_class);
         }
         put(PSH, x->r, SP, 4);
         free_register(&x->r);
@@ -736,8 +754,8 @@ void G_io_write_line(void) {
     put(WRL, 0, 0, 0);
 }
 
-void G_inc_dec(char inc, G_Item* y, G_Item* delta) {
-    INTEGER pc_relative;
+void G_inc_dec(bool inc, G_Item* y, G_Item* delta) {
+    int pc_relative;
     INTEGER r;
     if(y->mode == Var ) {
         pc_relative = 4 * (y->r == PC);
@@ -849,6 +867,7 @@ void G_open(void) {
 void G_close(INTEGER globals) {
     put(POP, LNK, SP, 4);
     put_BR(RET, LNK);
+    ensure("all registers free", registers.s == 0);
 }
 
 void G_init(void) {

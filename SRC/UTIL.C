@@ -21,9 +21,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "UTIL.H"
 
 char *read_file(char* name) {
@@ -31,39 +28,40 @@ char *read_file(char* name) {
     long size, sizeRead;
     char *s;
 
-    // Opening in text mode should remove \r and only leave \n.
-    // However, it does not do so on macOS.
-    if((f = fopen(name, "r")) == NULL) {
-        printf("Cannot open %s", name);
-        return NULL;
-    } else {
-        fseek (f, 0, SEEK_END);
-        size = ftell(f);
-        rewind(f);
+    require_not_null(name);
 
-        s = (char *)malloc(size + 1);
-        sizeRead = fread(s, 1, size, f);
-        s[sizeRead] = '\0';
+    f = fopen(name, "r");
+    panicf_if(f == NULL, "Cannot open %s", name);
 
-        fclose(f);
-        return s;
-    }
+    fseek (f, 0, SEEK_END);
+    size = ftell(f);
+    rewind(f);
+
+    s = (char *)xmalloc(size + 1);
+    sizeRead = fread(s, 1, size, f);
+    s[sizeRead] = '\0';
+
+    fclose(f);
+    return s;
 }
 
 Set make_set(void) {
     return 0;
 }
 
-char in(int x, Set s) {
+// Checks if x is in s.
+bool in(int x, Set s) {
     return (s >> x) & 1;
 }
 
+// Adds x to s.
 void incl(Set* s, int x) {
-    s[0] |= (1 << x);
+    *s |= (1 << x);
 }
 
+// Remooves x from s.
 void excl(Set* s, int x) {
-    s[0] &= ~(1 << x);
+    *s &= ~(1 << x);
 }
 
 

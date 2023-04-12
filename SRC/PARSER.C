@@ -22,10 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "UTIL.H"
 #include "RISC.H"
 #include "SCAN.H"
@@ -112,7 +108,7 @@ static void new_object(/*out*/G_Object** obj, G_ClassMode klass) {
         x = x->next;
     }
     if(x->next == guard ) {
-        new = calloc(1, sizeof(G_Object));
+        new = xcalloc(1, sizeof(G_Object));
         strcpy(new->name, S_identifier);
         new->klass = klass;
         new->type = G_undefined_type;
@@ -123,6 +119,7 @@ static void new_object(/*out*/G_Object** obj, G_ClassMode klass) {
         *obj = x->next;
         S_mark("duplicate definition");
     }
+    ensure_not_null(*obj);
 }
 
 /*
@@ -224,7 +221,7 @@ identifier exists.
 static void find(/*out*/G_Object** obj) {
     G_Object* s = top_scope;
     strcpy(guard->name, S_identifier);
-    while(1) {
+    while(true ) {
         G_Object* x = s->next;
 
         while(strcmp(x->name, S_identifier) != 0 ) {
@@ -242,6 +239,7 @@ static void find(/*out*/G_Object** obj) {
         }
         s = s->dsc;
     }
+    ensure_not_null(*obj);
 }
 
 /*
@@ -255,6 +253,7 @@ static void find_field(/*out*/G_Object** obj, G_Object* list) {
         list = list->next;
     }
     *obj = list;
+    ensure_not_null(*obj);
 }
 
 /*
@@ -267,7 +266,7 @@ static BOOLEAN is_param(G_Object* obj) {
 }
 
 static void open_scope(void) {
-    G_Object* s = calloc(1, sizeof(G_Object));
+    G_Object* s = xcalloc(1, sizeof(G_Object));
     s->klass = Head;
     s->dsc = top_scope;
     s->next = guard;
@@ -439,9 +438,10 @@ static void std_proc_call_param(/*out*/G_Item* x) {
 }
 
 static void std_proc_call(/*in*/G_Item* x, /*out*/G_Item* y) {
-    size_t std_proc_number = x->a;
+    require("x is standard procedure", x->mode == StdProc);
     G_Item delta = G_make_item();
-    switch(std_proc_number) {
+    int std_proc_number = x->a;
+    switch(std_proc_number ) {
     case 1: {
         std_proc_call_param(y);
         if(y->type->form != Integer ) {
@@ -531,12 +531,12 @@ static void std_proc_call(/*in*/G_Item* x, /*out*/G_Item* y) {
         break;
     }
     default:
-        exit_if(1, "invalid standard procedure number %d", std_proc_number);
+        exit_if(true, "invalid standard procedure number %d", std_proc_number);
     }
 }
 
 static void add_forward_call(G_Object* proc, int pc) {
-    G_Object* obj = calloc(1, sizeof(G_Object));
+    G_Object* obj = xcalloc(1, sizeof(G_Object));
     obj->value = pc;
     obj->dsc = proc;
     obj->next = forward_calls;
@@ -560,7 +560,7 @@ static void statement_sequence(void) {
     G_Item x = G_make_item();
     G_Item y = G_make_item();
     INTEGER L;
-    while(1) {
+    while(true ) {
 
         obj = guard;
         if(sym < s_ident ) {
@@ -590,7 +590,7 @@ static void statement_sequence(void) {
                     if(sym == s_rparen ) {
                         S_get(&sym);
                     } else {
-                        while(1) {
+                        while(true ) {
                             parameter(&formal_parameters);
                             if(sym == s_comma ) {
                                 S_get(&sym);
@@ -755,7 +755,7 @@ static void P_type(/*out*/G_Type** type) {
         S_get(&sym);
         size = 0;
         open_scope();
-        while(1) {
+        while(true ) {
             if(sym == s_ident ) {
                 identifier_list(Fld, &first);
                 P_type(&tp);
@@ -800,20 +800,20 @@ static void declarations(INTEGER* varsize) {
             S_get(&sym);
         } while (sym < s_const && sym != s_end);
     }
-    while(1) {
-        if(sym == s_const) {
+    while(true ) {
+        if(sym == s_const ) {
             S_get(&sym);
-            while(sym == s_ident) {
+            while(sym == s_ident ) {
                 new_object(&obj, Const);
                 S_get(&sym);
-                if(sym == s_eql) {
+                if(sym == s_eql ) {
                     S_get(&sym);
                 } else {
                     S_mark("=?");
                 }
                 x = G_make_item();
                 expression(&x);
-                if(x.mode == Const) {
+                if(x.mode == Const ) {
                     obj->value = x.a;
                     obj->type = x.type;
                 } else {
@@ -825,9 +825,10 @@ static void declarations(INTEGER* varsize) {
                     S_mark(";?");
                 }
             }
-        } else if(sym == s_type) { 
+        }
+        if(sym == s_type ) {
             S_get(&sym);
-            while(sym == s_ident) {
+            while(sym == s_ident ) {
                 new_object(&obj, Typ);
                 S_get(&sym);
                 if(sym == s_eql ) {
@@ -842,7 +843,8 @@ static void declarations(INTEGER* varsize) {
                     S_mark(";?");
                 }
             }
-        } else if(sym == s_var) { 
+        }
+        if(sym == s_var ) {
             S_get(&sym);
             while(sym == s_ident ) {
                 identifier_list(Var, &first);
@@ -990,6 +992,8 @@ static void procedure_decl(void) {
         G_return(parblksize - G_MARK_SIZE);
         close_scope();
         G_inc_level(-1);
+        ensure_not_null(proc);
+        ensure_not_null(proc->dsc);
     }
 }
 
@@ -1043,7 +1047,7 @@ static void module(void) {
             S_mark(". ?");
         }
         close_scope();
-        if(!S_error) {
+        if(!S_error ) {
             G_close(varsize);
         }
     } else {
@@ -1057,7 +1061,7 @@ Creates a object of the given class, name, value, and type, and adds it to the
 topmost scope.
 */;
 static void enter(G_ClassMode klass, INTEGER value, S_Identifier name, G_Type* type) {
-    G_Object* obj = calloc(1, sizeof(G_Object));
+    G_Object* obj = xcalloc(1, sizeof(G_Object));
     obj->klass = klass;
     obj->value = value;
     strcpy(obj->name, name);
@@ -1070,7 +1074,7 @@ static void enter(G_ClassMode klass, INTEGER value, S_Identifier name, G_Type* t
 static void init(void) {
     G_init();
     sym = s_null;
-    guard = calloc(1, sizeof(G_Object));
+    guard = xcalloc(1, sizeof(G_Object));
     guard->klass = Var;
     guard->type = G_int_type;
     guard->value = 0;
@@ -1095,9 +1099,9 @@ static void init(void) {
     forward_calls = NULL;
 }
 
-char P_compile(char *source_text, INTEGER** code, INTEGER* code_length, INTEGER* entry) {
+bool P_compile(char *filename, char *source_text, INTEGER** code, INTEGER* code_length, INTEGER* entry) {
     init();
-    S_init(source_text, 0);
+    S_init(filename, source_text, 0);
     S_get(&sym);
     module();
     *code = G_code;
