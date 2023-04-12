@@ -21,9 +21,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
+#include <stdio.h>
+#include <string.h>
 #include <stdint.h>
 #include <ctype.h>
 #include <limits.h>
+
 #include "UTIL.H"
 #include "RISC.H"
 #include "SCAN.H"
@@ -92,12 +95,12 @@ struct {
 
 INTEGER S_value;
 S_Identifier S_identifier;
-bool S_error = true;
+char S_error = 1;
 static char ch;
 static int errpos;
-static String source_text;
-static int source_text_pos;
-static int source_text_pos_token;
+static char * source_text;
+static size_t source_text_pos;
+static size_t source_text_pos_token;
 
 #define ORD(ch) ((ch) & 0xff)
 
@@ -105,8 +108,8 @@ void S_line_and_column(int* line, int* column) {
     int i;
     *line = 1;
     *column = 1;
-    for(i = 0; i < source_text_pos_token && i < source_text.len; i++ ) {
-        char c = source_text.s[i];
+    for(i = 0; i < source_text_pos_token && (source_text[i] != 0); i++ ) {
+        char c = source_text[i];
         if(c == '\n' ) {
             *line += 1;
             *column = 1;
@@ -123,7 +126,7 @@ position is output.
 */
 void S_mark(const char* msg) {
     int line, column;
-    S_error = true;
+    S_error = 1;
     if(source_text_pos_token >= errpos ) {
         S_line_and_column(&line, &column);
         fprintf(stderr, "\t%d:%d: %s\n", line, column, msg);
@@ -149,16 +152,15 @@ Reads the next character from the source text, or '\0' if the end has been
 reached.
 */;
 static void read(char* c) {
-    if(source_text_pos < source_text.len ) {
-        *c = source_text.s[source_text_pos];
-    } else {
-        *c = '\0';
+    *c = 0;
+    if(source_text[source_text_pos] != 0) {
+        *c = source_text[source_text_pos];
+        source_text_pos++;
     }
-    source_text_pos++;
 }
 
-static bool read_eot() {
-    return source_text_pos > source_text.len;
+static char read_eot() {
+    return source_text[source_text_pos] == 0;
 }
 
 /*
@@ -188,18 +190,17 @@ static void identifier(S_Symbol* sym) {
     } else {
         *sym = s_ident;
     }
-    ensure("identifier is terminated", exists(i, S_IDENTIFIER_LENGTH + 1, S_identifier[i] == '\0'));
 }
 
 static void number(S_Symbol* sym) {
-    bool too_large = false;
+    char too_large = 0;
     S_value = 0;
     *sym = s_number;
     do {
         if(S_value <= (INTEGER_MAX - ORD(ch) + ORD('0')) / 10 ) {
             S_value = 10 * S_value + (ORD(ch) - ORD('0'));
         } else {
-            too_large = true;
+            too_large = 1;
         }
         read(&ch);
     } while (ch >= '0' && ch <= '9');
@@ -211,8 +212,8 @@ static void number(S_Symbol* sym) {
 
 static void comment(S_Symbol* sym) {
     read(&ch);
-    while (true) {
-        while (true) {
+    while (1) {
+        while (1) {
             while(ch == '(' ) {
                 read(&ch);
                 if(ch == '*' ) {
@@ -360,14 +361,14 @@ void S_get(S_Symbol* sym) {
 Initializes the scanner and prepares it to scan the source text starting at the
 given position.
 */
-void S_init(String a_source_text, int pos) {
+void S_init(char *a_source_text, int pos) {
     source_text = a_source_text;
     source_text_pos = pos;
     source_text_pos_token = pos;
     S_value = 0;
     S_identifier[0] = '\0';
     ch = '\0';
-    S_error = false;
+    S_error = 0;
     errpos = pos;
     read(&ch);
 }
