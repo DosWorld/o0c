@@ -28,10 +28,7 @@ char *read_file(char* name) {
     long size, sizeRead;
     char *s;
 
-    require_not_null(name);
-
-    f = fopen(name, "r");
-    panicf_if(f == NULL, "Cannot open %s", name);
+    panicf_if((f = fopen(name, "r")) == NULL, "Cannot open %s", name);
 
     fseek (f, 0, SEEK_END);
     size = ftell(f);
@@ -39,7 +36,7 @@ char *read_file(char* name) {
 
     s = (char *)xmalloc(size + 1);
     sizeRead = fread(s, 1, size, f);
-    s[sizeRead] = '\0';
+    s[sizeRead] = 0;
 
     fclose(f);
     return s;
@@ -49,17 +46,14 @@ Set make_set(void) {
     return 0;
 }
 
-// Checks if x is in s.
-bool in(int x, Set s) {
+char in(int x, Set s) {
     return (s >> x) & 1;
 }
 
-// Adds x to s.
 void incl(Set* s, int x) {
     *s |= (1 << x);
 }
 
-// Remooves x from s.
 void excl(Set* s, int x) {
     *s &= ~(1 << x);
 }

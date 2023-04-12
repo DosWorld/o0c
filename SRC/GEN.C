@@ -107,7 +107,7 @@ INTEGER G_code[G_MAX_CODE];
 
 void G_print_item(G_Item* i) {
     char* form = "(null)";
-    if(i->type != NULL ) {
+    if(i->type != NULL) {
         form = form_names[i->type->form].name;
     }
     printf("G_Item(%s, %s, level=%d, a=%d, b=%d, c=%d, r=%d)\n",
@@ -118,7 +118,7 @@ void G_print_item(G_Item* i) {
 
 void G_print_object(G_Object* o) {
     char* form = "(null)";
-    if(o->type != NULL ) {
+    if(o->type != NULL) {
         form = form_names[o->type->form].name;
     }
     printf("G_Object(%s, %s, %s, level=%d, value=%d)\n",
@@ -129,7 +129,7 @@ void G_print_object(G_Object* o) {
 
 void G_print_type(G_Type* t) {
     char* base = "(null)";
-    if(t->base != NULL ) {
+    if(t->base != NULL) {
         base = form_names[t->base->form].name;
     }
     printf("G_Type(%s, base=%s, size=%d, len=%d)\n",
@@ -140,7 +140,7 @@ void G_print_type(G_Type* t) {
 static void get_register(INTEGER* r) {
     require("register free", *r < 0 || *r >= FP);
     int i = 0;
-    while(i < FP && in(i, registers) ) {
+    while(i < FP && in(i, registers)) {
         i++;
     }
     panic_if(i >= FP, "no free register found");
@@ -150,7 +150,7 @@ static void get_register(INTEGER* r) {
 
 static void free_register(/*inout*/INTEGER* r) {
     INTEGER i = *r;
-    if(i >= 0 && i < FP ) {
+    if(i >= 0 && i < FP) {
         excl(&registers, i);
     }
     *r = -1;
@@ -172,7 +172,7 @@ static void put_BR(INTEGER op, INTEGER disp) {
 
 
 static void test_range(INTEGER x) {
-    if(x >= 0x20000 || x < -0x20000 ) {
+    if(x >= 0x20000 || x < -0x20000) {
         S_mark("value too large");
     }
 }
@@ -180,8 +180,8 @@ static void test_range(INTEGER x) {
 static void load(G_Item* x) {
     require("not in Reg mode", x->mode != Reg);
     INTEGER r = -1;
-    if(x->mode == Var ) {
-        if(x->r == PC ) {
+    if(x->mode == Var) {
+        if(x->r == PC) {
             x->a -= G_pc * 4;
         }
         get_register(&r);
@@ -189,7 +189,7 @@ static void load(G_Item* x) {
         free_register(&x->r);
         x->r = r;
         x->mode = Reg;
-    } else if(x->mode == Const ) {
+    } else if(x->mode == Const) {
         test_range(x->a);
         get_register(&x->r);
         put(MOVI, x->r, 0, x->a);
@@ -206,7 +206,7 @@ false (x = 0) then Z = 1. If x is true (x != 0) then Z = 0. So a subsequent BEQ
 would branch if x is true.
 */;
 static void load_bool(G_Item* x) {
-    if(x->type->form != Boolean ) {
+    if(x->type->form != Boolean) {
         S_mark("Boolean?");
     }
     load(x);
@@ -223,15 +223,14 @@ MOV, MVN, ADD, SUB, MUL, Div, Mod, CMP.
 */;
 static void put_op(INTEGER op, G_Item* x, G_Item* y) {
     require("valid range", MOV <= op && op <= CMP);
-    if(x->mode != Reg ) {
+    if(x->mode != Reg) {
         load(x);
     }
     if(y->mode == Const ) {
         test_range(y->a);
-
         put(op + (MOVI - MOV), x->r, x->r, y->a);
     } else {
-        if(y->mode != Reg ) {
+        if(y->mode != Reg) {
             load(y);
         }
         put(op, x->r, x->r, y->r);
@@ -253,7 +252,7 @@ instruction refers to the preceding branch instruction in the list.
 */;
 static INTEGER merged(INTEGER L0, INTEGER L1) {
     INTEGER L2, L3;
-    if(L0 != 0 ) {
+    if(L0 != 0) {
         L2 = L0;
         while(true ) {
             L3 = G_code[L2] & 0x03ffffff;
@@ -278,7 +277,7 @@ void G_fix(INTEGER at, INTEGER with) {
 
 static void fix_with(INTEGER L0, INTEGER L1) {
     INTEGER L2;
-    while(L0 != 0 ) {
+    while(L0 != 0) {
         L2 = G_code[L0] & 0x03ffffff;
         G_fix(L0, L1 - L0);
         L0 = L2;
@@ -287,7 +286,7 @@ static void fix_with(INTEGER L0, INTEGER L1) {
 
 void G_fix_link(INTEGER L) {
     INTEGER L_prev;
-    while(L != 0 ) {
+    while(L != 0) {
         L_prev = G_code[L] & 0x03ffffff;
         G_fix(L, G_pc - L);
         L = L_prev;
@@ -332,18 +331,16 @@ void G_item_from_object(/*out*/G_Item* x, /*in*/G_Object* y) {
     x->level = y->level;
     x->a = y->value;
     x->b = 0;
-    if(y->level == 0 ) {
+    if(y->level == 0) {
         x->r = PC;
-    } else if(y->level == G_current_level ) {
+    } else if(y->level == G_current_level) {
         x->r = FP;
     } else {
         S_mark("access to intermediary levels (surrounding procedures) is not allowed");
         x->r = -1;
     }
-    if(y->klass == Par ) {
-
+    if(y->klass == Par) {
         get_register(&r);
-
         put(LDW, r, x->r, x->a);
         x->mode = Var;
         x->r = r;
@@ -362,16 +359,16 @@ void G_field(/*inout*/G_Item* x, /*in*/G_Object* y) {
 void G_index(/*inout*/G_Item* x, /*in*/G_Item* y) {
     require("x is an array", x->type->form == Array);
     require("valid mode", x->mode == Var || x->mode == Const);
-    if(y->type != G_int_type ) {
+    if(y->type != G_int_type) {
         S_mark("index not integer");
     }
-    if(y->mode == Const ) {
+    if(y->mode == Const) {
         if(y->a < 0 || y->a >= x->type->len ) {
             S_mark("bad index");
         }
         x->a += y->a * x->type->base->size;
     } else {
-        if(y->mode != Reg ) {
+        if(y->mode != Reg) {
             load(y);
         }
         put(CHKI, y->r, 0, x->type->len);
@@ -398,21 +395,20 @@ expression = SimpleExpression [("=" | "#" | "<" | "<=" | ">" | ">=") SimpleExpre
 
 void G_op1(S_Symbol op, /*inout*/G_Item* x) {
     INTEGER t;
-    if(op == s_minus ) {
-        if(x->type->form != Integer ) {
+    if(op == s_minus) {
+        if(x->type->form != Integer) {
             S_mark("bad type");
-        } else if(x->mode == Const ) {
+        } else if(x->mode == Const) {
 
             x->a = -x->a;
         } else {
-
-            if(x->mode != Reg ) {
+            if(x->mode != Reg) {
                 load(x);
             }
             put(MVN, x->r, 0, x->r);
         }
-    } else if(op == s_not ) {
-        if(x->mode != Cond ) {
+    } else if(op == s_not) {
+        if(x->mode != Cond) {
             load_bool(x);
         }
         x->c = negated(x->c);
@@ -421,19 +417,17 @@ void G_op1(S_Symbol op, /*inout*/G_Item* x) {
         x->a = x->b;
         x->b = t;
         free_register(&x->r);
-    } else if(op == s_and ) {
-
-        if(x->mode != Cond ) {
+    } else if(op == s_and) {
+        if(x->mode != Cond) {
             load_bool(x);
         }
         put_BR(BEQ + negated(x->c), x->a);
         free_register(&x->r);
         x->a = G_pc - 1;
         G_fix_link(x->b);
-
         x->b = 0;
-    } else if(op == s_or ) {
-        if(x->mode != Cond ) {
+    } else if(op == s_or) {
+        if(x->mode != Cond) {
             load_bool(x);
         }
         put_BR(BEQ + x->c, x->b);
@@ -447,45 +441,45 @@ void G_op1(S_Symbol op, /*inout*/G_Item* x) {
 
 
 void G_op2(S_Symbol op, /*inout*/G_Item* x, /*in*/G_Item* y) {
-    if(x->type->form == Integer && y->type->form == Integer ) {
-        if(x->mode == Const && y->mode == Const ) {
-            if(op == s_plus ) {
+    if(x->type->form == Integer && y->type->form == Integer) {
+        if(x->mode == Const && y->mode == Const) {
+            if(op == s_plus) {
                 x->a += y->a;
-            } else if(op == s_minus ) {
+            } else if(op == s_minus) {
                 x->a -= y->a;
-            } else if(op == s_times ) {
+            } else if(op == s_times) {
                 x->a = x->a * y->a;
-            } else if(op == s_div ) {
+            } else if(op == s_div) {
                 x->a = x->a / y->a;
-            } else if(op == s_mod ) {
+            } else if(op == s_mod) {
                 x->a = R_mod(x->a, y->a);
             } else {
                 S_mark("bad type");
             }
         } else {
-            if(op == s_plus ) {
+            if(op == s_plus) {
                 put_op(ADD, x, y);
-            } else if(op == s_minus ) {
+            } else if(op == s_minus) {
                 put_op(SUB, x, y);
-            } else if(op == s_times ) {
+            } else if(op == s_times) {
                 put_op(MUL, x, y);
-            } else if(op == s_div ) {
+            } else if(op == s_div) {
                 put_op(Div, x, y);
-            } else if(op == s_mod ) {
+            } else if(op == s_mod) {
                 put_op(Mod, x, y);
             } else {
                 S_mark("bad type");
             }
         }
-    } else if(x->type->form == Boolean && y->type->form == Boolean ) {
-        if(y->mode != Cond ) {
+    } else if(x->type->form == Boolean && y->type->form == Boolean) {
+        if(y->mode != Cond) {
             load_bool(y);
         }
-        if(op == s_or ) {
+        if(op == s_or) {
             x->a = y->a;
             x->b = merged(y->b, x->b);
             x->c = y->c;
-        } else if(op == s_and ) {
+        } else if(op == s_and) {
             x->a = merged(y->a, x->a);
             x->b = y->b;
             x->c = y->c;
@@ -504,7 +498,7 @@ Emits code to check the given relation. The relations are: s_eql = 9, s_neq =
 */;
 void G_relation(S_Symbol op, /*inout*/G_Item* x, /*in*/G_Item* y) {
     require("valid relation", s_eql <= op && op <= s_gtr);
-    if(x->type->form != Integer || y->type->form != Integer ) {
+    if(x->type->form != Integer || y->type->form != Integer) {
         S_mark("bad type");
     } else {
         put_op(CMP, x, y);
@@ -521,23 +515,23 @@ Checks if type1 is a legal actual parameter type for the formal parameter type
 type2.
 */;
 static bool parameter_compatible(G_Type* actual_type, G_Type* formal_type) {
-    if(actual_type == G_undefined_type || formal_type == G_undefined_type ) {
+    if(actual_type == G_undefined_type || formal_type == G_undefined_type) {
         return false;
     }
-    if(actual_type->form != formal_type->form ) {
+    if(actual_type->form != formal_type->form) {
         return false;
     }
-    if(actual_type->form == Integer ) {
+    if(actual_type->form == Integer) {
         return true;
     }
-    if(actual_type->form == Boolean ) {
+    if(actual_type->form == Boolean) {
         return true;
     }
-    if(actual_type->form == Array ) {
+    if(actual_type->form == Array) {
         return actual_type->len == formal_type->len && \
                parameter_compatible(actual_type->base, formal_type->base);
     }
-    if(actual_type->form == Record ) {
+    if(actual_type->form == Record) {
         return actual_type == formal_type;
     }
     return false;
@@ -598,9 +592,9 @@ static void store_record(G_Item* x, G_Item* y) {
 
 
 void G_store(/*inout*/G_Item* x, /*in*/G_Item* y) {
-    if(assignment_compatible(x->type, y->type) ) {
+    if(assignment_compatible(x->type, y->type)) {
         G_Form x_form = x->type->form;
-        if(x_form == Integer || x_form == Boolean ) {
+        if(x_form == Integer || x_form == Boolean) {
             if(y->mode == Cond ) {
                 put_BR(BEQ + negated(y->c), y->a);
                 free_register(&y->r);
@@ -611,21 +605,21 @@ void G_store(/*inout*/G_Item* x, /*in*/G_Item* y) {
                 put_BR(BR, 2);
                 G_fix_link(y->a);
                 put(MOVI, y->r, 0, 0);
-            } else if(y->mode != Reg ) {
+            } else if(y->mode != Reg) {
                 load(y);
             }
-            if(x->mode == Var ) {
+            if(x->mode == Var) {
                 put(STW, y->r, x->r, x->a - G_pc * 4 * (x->r == PC));
             } else {
                 S_mark("illegal assignment");
             }
             free_register(&x->r);
             free_register(&y->r);
-        } else if(x_form == Array ) {
+        } else if(x_form == Array) {
             store_array(x, y);
             free_register(&x->r);
             free_register(&y->r);
-        } else if(x_form == Record ) {
+        } else if(x_form == Record) {
             store_record(x, y);
             free_register(&x->r);
             free_register(&y->r);
@@ -643,12 +637,11 @@ so, generates code to push the parameter onto the stack.
 */;
 void G_parameter(G_Item* x, G_Type* fp_type, G_ClassMode fp_class) {
     INTEGER a, r;
-    if(parameter_compatible(x->type, fp_type) ) {
-        if(fp_class == Par ) {
-
-            if(x->mode == Var ) {
+    if(parameter_compatible(x->type, fp_type)) {
+        if(fp_class == Par) {
+            if(x->mode == Var) {
                 a = x->a;
-                if(x->r == PC ) {
+                if(x->r == PC) {
                     a -= 4 * G_pc;
                 }
                 if(a != 0 ) {
@@ -681,7 +674,7 @@ Emits a conditional forward jump with unknown destination address. Will be fixed
 once it is known.
 */;
 void G_cond_forward_jump(G_Item* x) {
-    if(x->type->form == Boolean ) {
+    if(x->type->form == Boolean) {
         if(x->mode != Cond ) {
             load_bool(x);
         }
@@ -726,7 +719,7 @@ void G_io_write(G_Item* y) {
 }
 
 void G_io_write_hex(G_Item* y) {
-    if(y->mode != Reg ) {
+    if(y->mode != Reg) {
         load(y);
     }
     put(WRH, 0, 0, y->r);
@@ -743,7 +736,7 @@ void G_io_read_byte(G_Item* y) {
 }
 
 void G_io_write_byte(G_Item* y) {
-    if(y->mode != Reg ) {
+    if(y->mode != Reg) {
         load(y);
     }
     put(WRB, 0, 0, y->r);
@@ -757,15 +750,15 @@ void G_io_write_line(void) {
 void G_inc_dec(bool inc, G_Item* y, G_Item* delta) {
     int pc_relative;
     INTEGER r;
-    if(y->mode == Var ) {
+    if(y->mode == Var) {
         pc_relative = 4 * (y->r == PC);
         r = -1;
         get_register(&r);
         put(LDW, r, y->r, y->a - pc_relative * G_pc);
-        if(delta->mode == Const ) {
+        if(delta->mode == Const) {
             put(inc ? ADDI : SUBI, r, r, delta->a);
         } else {
-            if(delta->mode != Reg ) {
+            if(delta->mode != Reg) {
                 load(delta);
             }
             put(inc ? ADD : SUB, r, r, delta->r);
@@ -782,7 +775,7 @@ void G_inc_dec(bool inc, G_Item* y, G_Item* delta) {
 static void put_string(const char* s) {
     INTEGER r = -1;
     get_register(&r);
-    while(*s ) {
+    while(*s) {
         put(MOVI, r, 0, *s);
         put(WRB, 0, 0, r);
         s++;
@@ -799,22 +792,20 @@ static void put_number(int i) {
 }
 
 void G_assert(G_Item* y) {
-    int line, column;
+    size_t line, column;
     INTEGER branch_location;
-    if(y->type->form == Boolean ) {
-        if(y->mode != Cond ) {
+    if(y->type->form == Boolean) {
+        if(y->mode != Cond) {
             load_bool(y);
         }
         branch_location = G_pc;
         put_BR(BEQ + y->c, 0);
         free_register(&y->r);
         G_fix_link(y->b);
-
-
         line = 0;
         column = 0;
         S_line_and_column(&line, &column);
-        if(column == 0 ) {
+        if(column == 0) {
             line--;
         }
         put_string("ASSERT failed, line:");
@@ -822,7 +813,6 @@ void G_assert(G_Item* y) {
         put(WRL, 0, 0, 0);
         put(MOVI, LNK, 0, 0);
         put_BR(RET, LNK);
-
         G_fix_link(branch_location);
     } else {
         S_mark("Boolean?");
@@ -876,3 +866,4 @@ void G_init(void) {
     G_bool_type = G_new_type(Boolean, R_WORD_SIZE);
     G_int_type = G_new_type(Integer, R_WORD_SIZE);
 }
+

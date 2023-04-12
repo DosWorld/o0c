@@ -221,18 +221,16 @@ identifier exists.
 static void find(/*out*/G_Object** obj) {
     G_Object* s = top_scope;
     strcpy(guard->name, S_identifier);
-    while(true ) {
+    while(true) {
         G_Object* x = s->next;
-
-        while(strcmp(x->name, S_identifier) != 0 ) {
+        while(strcmp(x->name, S_identifier) != 0) {
             x = x->next;
         }
-        if(x != guard ) {
-
+        if(x != guard) {
             *obj = x;
             break;
         }
-        if(s == universe ) {
+        if(s == universe) {
             *obj = x;
             S_mark("undef");
             break;
@@ -249,7 +247,7 @@ identifier exists.
 */;
 static void find_field(/*out*/G_Object** obj, G_Object* list) {
     strcpy(guard->name, S_identifier);
-    while(strcmp(list->name, S_identifier) != 0 ) {
+    while(strcmp(list->name, S_identifier) != 0) {
         list = list->next;
     }
     *obj = list;
@@ -280,29 +278,30 @@ static void close_scope(void) {
 static void expression(G_Item* x);
 
 static void selector(/*inout*/G_Item* x) {
-    G_Item y = G_make_item();
     G_Object* obj;
-    while(sym == s_lbrak || sym == s_period ) {
-        if(sym == s_lbrak ) {
+    G_Item y = G_make_item();
+
+    while(sym == s_lbrak || sym == s_period) {
+        if(sym == s_lbrak) {
             S_get(&sym);
             expression(&y);
-            if(x->type->form == Array ) {
+            if(x->type->form == Array) {
                 G_index(x, &y);
             } else {
                 S_mark("not an array");
             }
-            if(sym == s_rbrak ) {
+            if(sym == s_rbrak) {
                 S_get(&sym);
             } else {
                 S_mark("]?");
             }
         } else {
             S_get(&sym);
-            if(sym == s_ident ) {
-                if(x->type->form == Record ) {
+            if(sym == s_ident) {
+                if(x->type->form == Record) {
                     find_field(&obj, x->type->fields);
                     S_get(&sym);
-                    if(obj != guard ) {
+                    if(obj != guard) {
                         G_field(x, obj);
                     } else {
                         S_mark("undef");
@@ -319,29 +318,30 @@ static void selector(/*inout*/G_Item* x) {
 
 static void factor(/*out*/G_Item* x) {
     G_Object* obj;
-    if(sym < s_lparen ) {
+
+    if(sym < s_lparen) {
         S_mark("ident?");
         do {
             S_get(&sym);
         } while (sym < s_lparen);
     }
-    if(sym == s_ident ) {
+    if(sym == s_ident) {
         find(&obj);
         S_get(&sym);
         G_item_from_object(x, obj);
         selector(x);
-    } else if(sym == s_number ) {
+    } else if(sym == s_number) {
         G_make_const_item(x, G_int_type, S_value);
         S_get(&sym);
-    } else if(sym == s_lparen ) {
+    } else if(sym == s_lparen) {
         S_get(&sym);
         expression(x);
-        if(sym == s_rparen ) {
+        if(sym == s_rparen) {
             S_get(&sym);
         } else {
             S_mark(")?");
         }
-    } else if(sym == s_not ) {
+    } else if(sym == s_not) {
         S_get(&sym);
         factor(x);
         G_op1(s_not, x);
@@ -354,9 +354,9 @@ static void factor(/*out*/G_Item* x) {
 static void term(/*out*/G_Item* x) {
     G_Item y = G_make_item();
     S_Symbol op;
-    factor(x);
 
-    while(sym >= s_times && sym <= s_and ) {
+    factor(x);
+    while(sym >= s_times && sym <= s_and) {
         op = sym;
         S_get(&sym);
         if(op == s_and ) {
@@ -370,17 +370,18 @@ static void term(/*out*/G_Item* x) {
 static void simple_expression(/*out*/G_Item* x) {
     G_Item y = G_make_item();
     S_Symbol op;
-    if(sym == s_plus ) {
+
+    if(sym == s_plus) {
         S_get(&sym);
         term(x);
-    } else if(sym == s_minus ) {
+    } else if(sym == s_minus) {
         S_get(&sym);
         term(x);
         G_op1(s_minus, x);
     } else {
         term(x);
     }
-    while(sym >= s_plus && sym <= s_or ) {
+    while(sym >= s_plus && sym <= s_or) {
         op = sym;
         S_get(&sym);
         if(op == s_or ) {
@@ -394,9 +395,9 @@ static void simple_expression(/*out*/G_Item* x) {
 static void expression(/*out*/G_Item* x) {
     G_Item y = G_make_item();
     S_Symbol op;
-    simple_expression(x);
 
-    if(sym >= s_eql && sym <= s_gtr ) {
+    simple_expression(x);
+    if(sym >= s_eql && sym <= s_gtr) {
         op = sym;
         S_get(&sym);
         simple_expression(&y);
@@ -413,8 +414,9 @@ ActualParameters = "(" [expression {"," expression}] ")" .
 static void parameter(/*out*/G_Object** p_formal_parameter) {
     G_Object* formal_parameter = *p_formal_parameter;
     G_Item x = G_make_item();
+
     expression(&x);
-    if(is_param(formal_parameter) ) {
+    if(is_param(formal_parameter)) {
         G_parameter(&x, formal_parameter->type, formal_parameter->klass);
         formal_parameter = formal_parameter->next;
     } else {
@@ -424,13 +426,13 @@ static void parameter(/*out*/G_Object** p_formal_parameter) {
 }
 
 static void std_proc_call_param(/*out*/G_Item* x) {
-    if(sym == s_lparen ) {
+    if(sym == s_lparen) {
         S_get(&sym);
     } else {
         S_mark("(?");
     }
     expression(x);
-    if(sym == s_rparen ) {
+    if(sym == s_rparen) {
         S_get(&sym);
     } else {
         S_mark(")?");
@@ -438,13 +440,16 @@ static void std_proc_call_param(/*out*/G_Item* x) {
 }
 
 static void std_proc_call(/*in*/G_Item* x, /*out*/G_Item* y) {
+    G_Item delta;
+    int std_proc_number;
+
     require("x is standard procedure", x->mode == StdProc);
-    G_Item delta = G_make_item();
-    int std_proc_number = x->a;
-    switch(std_proc_number ) {
+    delta = G_make_item();
+    std_proc_number = x->a;
+    switch(std_proc_number) {
     case 1: {
         std_proc_call_param(y);
-        if(y->type->form != Integer ) {
+        if(y->type->form != Integer) {
             S_mark("not integer");
         }
         G_io_read(y);
@@ -452,7 +457,7 @@ static void std_proc_call(/*in*/G_Item* x, /*out*/G_Item* y) {
     }
     case 2: {
         std_proc_call_param(y);
-        if(y->type->form != Integer && y->type->form != Boolean ) {
+        if(y->type->form != Integer && y->type->form != Boolean) {
             S_mark("neither integer nor boolean");
         }
         G_io_write(y);
@@ -460,7 +465,7 @@ static void std_proc_call(/*in*/G_Item* x, /*out*/G_Item* y) {
     }
     case 3: {
         std_proc_call_param(y);
-        if(y->type->form != Integer ) {
+        if(y->type->form != Integer) {
             S_mark("not integer");
         }
         G_io_write_hex(y);
@@ -468,7 +473,7 @@ static void std_proc_call(/*in*/G_Item* x, /*out*/G_Item* y) {
     }
     case 4: {
         std_proc_call_param(y);
-        if(y->type->form != Integer ) {
+        if(y->type->form != Integer) {
             S_mark("not integer");
         }
         G_io_read_byte(y);
@@ -476,16 +481,16 @@ static void std_proc_call(/*in*/G_Item* x, /*out*/G_Item* y) {
     }
     case 5: {
         std_proc_call_param(y);
-        if(y->type->form != Integer ) {
+        if(y->type->form != Integer) {
             S_mark("not integer");
         }
         G_io_write_byte(y);
         break;
     }
     case 6: {
-        if(sym == s_lparen ) {
+        if(sym == s_lparen) {
             S_get(&sym);
-            if(sym == s_rparen ) {
+            if(sym == s_rparen) {
                 S_get(&sym);
             } else {
                 S_mark(")?");
@@ -496,25 +501,25 @@ static void std_proc_call(/*in*/G_Item* x, /*out*/G_Item* y) {
     }
     case 7:
     case 8: {
-        if(sym == s_lparen ) {
+        if(sym == s_lparen) {
             S_get(&sym);
         } else {
             S_mark("(?");
         }
         expression(y);
-        if(y->type->form != Integer ) {
+        if(y->type->form != Integer) {
             S_mark("not integer");
         }
-        if(sym == s_comma ) {
+        if(sym == s_comma) {
             S_get(&sym);
             expression(&delta);
         } else {
             G_make_const_item(&delta, G_int_type, 1);
         }
-        if(delta.type->form != Integer ) {
+        if(delta.type->form != Integer) {
             S_mark("not integer");
         }
-        if(sym == s_rparen ) {
+        if(sym == s_rparen) {
             S_get(&sym);
         } else {
             S_mark(")?");
@@ -524,7 +529,7 @@ static void std_proc_call(/*in*/G_Item* x, /*out*/G_Item* y) {
     }
     case 9: {
         std_proc_call_param(y);
-        if(y->type->form != Boolean ) {
+        if(y->type->form != Boolean) {
             S_mark("not boolean");
         }
         G_assert(y);
@@ -544,11 +549,12 @@ static void add_forward_call(G_Object* proc, int pc) {
 }
 
 static void fix_foward_calls(void) {
+    int at, with;
     G_Object* obj = forward_calls;
-    while(obj != NULL ) {
-        int at = obj->value;
-        int with = obj->dsc->value - at;
 
+    while(obj != NULL) {
+        at = obj->value;
+        with = obj->dsc->value - at;
         G_fix(at, with);
         obj = obj->next;
     }
@@ -560,44 +566,44 @@ static void statement_sequence(void) {
     G_Item x = G_make_item();
     G_Item y = G_make_item();
     INTEGER L;
-    while(true ) {
 
+    while(true) {
         obj = guard;
-        if(sym < s_ident ) {
+        if(sym < s_ident) {
             S_mark("statement?");
             do {
                 S_get(&sym);
             } while (sym < s_ident);
         }
-        if(sym == s_ident ) {
+        if(sym == s_ident) {
             find(&obj);
             S_get(&sym);
             G_item_from_object(&x, obj);
             selector(&x);
-            if(sym == s_becomes ) {
+            if(sym == s_becomes) {
                 S_get(&sym);
                 expression(&y);
                 G_store(&x, &y);
-            } else if(sym == s_eql ) {
+            } else if(sym == s_eql) {
                 S_mark(":= ?");
                 S_get(&sym);
                 expression(&y);
                 G_store(&x, &y);
-            } else if(x.mode == Proc ) {
+            } else if(x.mode == Proc) {
                 formal_parameters = obj->dsc;
-                if(sym == s_lparen ) {
+                if(sym == s_lparen) {
                     S_get(&sym);
-                    if(sym == s_rparen ) {
+                    if(sym == s_rparen) {
                         S_get(&sym);
                     } else {
-                        while(true ) {
+                        while(true) {
                             parameter(&formal_parameters);
-                            if(sym == s_comma ) {
+                            if(sym == s_comma) {
                                 S_get(&sym);
-                            } else if(sym == s_rparen ) {
+                            } else if(sym == s_rparen) {
                                 S_get(&sym);
                                 break;
-                            } else if(sym >= s_semicolon ) {
+                            } else if(sym >= s_semicolon) {
                                 break;
                             } else {
                                 S_mark(") or , ?");
@@ -606,32 +612,32 @@ static void statement_sequence(void) {
                     }
                 }
                 if(!is_param(formal_parameters) ) {
-                    if(obj->value < 0 ) {
+                    if(obj->value < 0) {
                         add_forward_call(obj, G_pc);
                     }
                     G_call(&x);
                 } else {
                     S_mark("too few parameters");
                 }
-            } else if(x.mode == StdProc ) {
+            } else if(x.mode == StdProc) {
                 std_proc_call(&x, &y);
-            } else if(obj->klass == Typ ) {
+            } else if(obj->klass == Typ) {
                 S_mark("illegal assignment?");
             } else {
                 S_mark("statement?");
             }
-        } else if(sym == s_if ) {
+        } else if(sym == s_if) {
             S_get(&sym);
             expression(&x);
             G_cond_forward_jump(&x);
-            if(sym == s_then ) {
+            if(sym == s_then) {
                 S_get(&sym);
             } else {
                 S_mark("THEN?");
             }
             statement_sequence();
             L = 0;
-            while(sym == s_elsif ) {
+            while(sym == s_elsif) {
                 S_get(&sym);
                 G_forward_jump(&L);
                 G_fix_link(x.a);
@@ -644,7 +650,7 @@ static void statement_sequence(void) {
                 }
                 statement_sequence();
             }
-            if(sym == s_else ) {
+            if(sym == s_else) {
                 S_get(&sym);
                 G_forward_jump(&L);
                 G_fix_link(x.a);
@@ -653,17 +659,17 @@ static void statement_sequence(void) {
                 G_fix_link(x.a);
             }
             G_fix_link(L);
-            if(sym == s_end ) {
+            if(sym == s_end) {
                 S_get(&sym);
             } else {
                 S_mark("END?");
             }
-        } else if(sym == s_while ) {
+        } else if(sym == s_while) {
             S_get(&sym);
             L = G_pc;
             expression(&x);
             G_cond_forward_jump(&x);
-            if(sym == s_do ) {
+            if(sym == s_do) {
                 S_get(&sym);
             } else {
                 S_mark("DO?");
@@ -671,15 +677,15 @@ static void statement_sequence(void) {
             statement_sequence();
             G_backward_jump(L);
             G_fix_link(x.a);
-            if(sym == s_end ) {
+            if(sym == s_end) {
                 S_get(&sym);
             } else {
                 S_mark("END?");
             }
         }
-        if(sym == s_semicolon ) {
+        if(sym == s_semicolon) {
             S_get(&sym);
-        } else if((sym >= s_semicolon && sym < s_if) || sym >= s_array ) {
+        } else if((sym >= s_semicolon && sym < s_if) || sym >= s_array) {
             break;
         } else {
             S_mark("; ?");
@@ -694,19 +700,20 @@ IdentList = ident {"," ident}.
 */;
 static void identifier_list(G_ClassMode klass, /*out*/G_Object** first) {
     G_Object* obj;
-    if(sym == s_ident ) {
+
+    if(sym == s_ident) {
         new_object(first, klass);
         S_get(&sym);
-        while(sym == s_comma ) {
+        while(sym == s_comma) {
             S_get(&sym);
-            if(sym == s_ident ) {
+            if(sym == s_ident) {
                 new_object(&obj, klass);
                 S_get(&sym);
             } else {
                 S_mark("ident?");
             }
         }
-        if(sym == s_colon ) {
+        if(sym == s_colon) {
             S_get(&sym);
         } else {
             S_mark(":?");
@@ -719,30 +726,30 @@ static void P_type(/*out*/G_Type** type) {
     G_Object* first;
     G_Item x = G_make_item();
     G_Type* tp;
-    int size;
+    size_t size;
     *type = G_int_type;
 
-    if(sym != s_ident && sym < s_array ) {
+    if(sym != s_ident && sym < s_array) {
         S_mark("type?");
         do {
             S_get(&sym);
         } while (sym != s_ident && sym < s_array);
     }
-    if(sym == s_ident ) {
+    if(sym == s_ident) {
         find(&obj);
         S_get(&sym);
-        if(obj->klass == Typ ) {
+        if(obj->klass == Typ) {
             *type = obj->type;
         } else {
             S_mark("type?");
         }
-    } else if(sym == s_array ) {
+    } else if(sym == s_array) {
         S_get(&sym);
         expression(&x);
-        if(x.mode != Const || x.a < 0 ) {
+        if(x.mode != Const || x.a < 0) {
             S_mark("bad index");
         }
-        if(sym == s_of ) {
+        if(sym == s_of) {
             S_get(&sym);
         } else {
             S_mark("OF?");
@@ -751,25 +758,25 @@ static void P_type(/*out*/G_Type** type) {
         *type = G_new_type(Array, x.a * tp->size);
         (*type)->base = tp;
         (*type)->len = x.a;
-    } else if(sym == s_record ) {
+    } else if(sym == s_record) {
         S_get(&sym);
         size = 0;
         open_scope();
-        while(true ) {
-            if(sym == s_ident ) {
+        while(true) {
+            if(sym == s_ident) {
                 identifier_list(Fld, &first);
                 P_type(&tp);
                 obj = first;
-                while(obj != guard ) {
+                while(obj != guard) {
                     obj->type = tp;
                     obj->value = size;
                     size += obj->type->size;
                     obj = obj->next;
                 }
             }
-            if(sym == s_semicolon ) {
+            if(sym == s_semicolon) {
                 S_get(&sym);
-            } else if(sym == s_ident ) {
+            } else if(sym == s_ident) {
                 S_mark("; ?");
             } else {
                 break;
@@ -778,7 +785,7 @@ static void P_type(/*out*/G_Type** type) {
         *type = G_new_type(Record, size);
         (*type)->fields = top_scope->next;
         close_scope();
-        if(sym == s_end ) {
+        if(sym == s_end) {
             S_get(&sym);
         } else {
             S_mark("END?");
@@ -794,63 +801,63 @@ static void declarations(INTEGER* varsize) {
     G_Item x;
     G_Type* tp;
 
-    if(sym < s_const && sym != s_end ) {
+    if(sym < s_const && sym != s_end) {
         S_mark("declaration?");
         do {
             S_get(&sym);
         } while (sym < s_const && sym != s_end);
     }
-    while(true ) {
-        if(sym == s_const ) {
+    while(true) {
+        if(sym == s_const) {
             S_get(&sym);
-            while(sym == s_ident ) {
+            while(sym == s_ident) {
                 new_object(&obj, Const);
                 S_get(&sym);
-                if(sym == s_eql ) {
+                if(sym == s_eql) {
                     S_get(&sym);
                 } else {
                     S_mark("=?");
                 }
                 x = G_make_item();
                 expression(&x);
-                if(x.mode == Const ) {
+                if(x.mode == Const) {
                     obj->value = x.a;
                     obj->type = x.type;
                 } else {
                     S_mark("expression not constant");
                 }
-                if(sym == s_semicolon ) {
+                if(sym == s_semicolon) {
                     S_get(&sym);
                 } else {
                     S_mark(";?");
                 }
             }
         }
-        if(sym == s_type ) {
+        if(sym == s_type) {
             S_get(&sym);
-            while(sym == s_ident ) {
+            while(sym == s_ident) {
                 new_object(&obj, Typ);
                 S_get(&sym);
-                if(sym == s_eql ) {
+                if(sym == s_eql) {
                     S_get(&sym);
                 } else {
                     S_mark("=?");
                 }
                 P_type(&obj->type);
-                if(sym == s_semicolon ) {
+                if(sym == s_semicolon) {
                     S_get(&sym);
                 } else {
                     S_mark(";?");
                 }
             }
         }
-        if(sym == s_var ) {
+        if(sym == s_var) {
             S_get(&sym);
-            while(sym == s_ident ) {
+            while(sym == s_ident) {
                 identifier_list(Var, &first);
                 P_type(&tp);
                 obj = first;
-                while(obj != guard ) {
+                while(obj != guard) {
                     obj->type = tp;
                     obj->level = G_current_level;
                     *varsize += obj->type->size;
@@ -877,13 +884,14 @@ static void procedure_decl_fp_section(INTEGER* parblksize) {
     G_Object* first;
     G_Type* tp;
     INTEGER parsize;
-    if(sym == s_var ) {
+
+    if(sym == s_var) {
         S_get(&sym);
         identifier_list(Par, &first);
     } else {
         identifier_list(Var, &first);
     }
-    if(sym == s_ident ) {
+    if(sym == s_ident) {
         find(&obj);
         S_get(&sym);
         if(obj->klass == Typ ) {
@@ -896,7 +904,7 @@ static void procedure_decl_fp_section(INTEGER* parblksize) {
         S_mark("type-ident?");
         tp = G_int_type;
     }
-    if(first->klass == Var ) {
+    if(first->klass == Var) {
         parsize = tp->size;
         if(tp->form >= Array ) {
             S_mark("no struct params");
@@ -905,7 +913,7 @@ static void procedure_decl_fp_section(INTEGER* parblksize) {
         parsize = R_WORD_SIZE;
     }
     obj = first;
-    while(obj != guard ) {
+    while(obj != guard) {
         obj->type = tp;
         *parblksize += parsize;
         obj = obj->next;
@@ -916,8 +924,9 @@ static void procedure_decl(void) {
     G_Object *proc, *obj;
     S_Identifier procid;
     INTEGER locblksize, parblksize;
+
     S_get(&sym);
-    if(sym == s_ident ) {
+    if(sym == s_ident) {
         strcpy(procid, S_identifier);
         new_object(&proc, Proc);
         S_get(&sym);
@@ -925,9 +934,9 @@ static void procedure_decl(void) {
         G_inc_level(1);
         open_scope();
         proc->value = -1;
-        if(sym == s_lparen ) {
+        if(sym == s_lparen) {
             S_get(&sym);
-            if(sym == s_rparen ) {
+            if(sym == s_rparen) {
                 S_get(&sym);
             } else {
                 procedure_decl_fp_section(&parblksize);
@@ -935,7 +944,7 @@ static void procedure_decl(void) {
                     S_get(&sym);
                     procedure_decl_fp_section(&parblksize);
                 }
-                if(sym == s_rparen ) {
+                if(sym == s_rparen) {
                     S_get(&sym);
                 } else {
                     S_mark(")?");
@@ -944,9 +953,9 @@ static void procedure_decl(void) {
         }
         obj = top_scope->next;
         locblksize = parblksize;
-        while(obj != guard ) {
+        while(obj != guard) {
             obj->level = G_current_level;
-            if(obj->klass == Par ) {
+            if(obj->klass == Par) {
                 locblksize -= R_WORD_SIZE;
             } else {
                 locblksize -= obj->type->size;
@@ -955,16 +964,16 @@ static void procedure_decl(void) {
             obj = obj->next;
         }
         proc->dsc = top_scope->next;
-        if(sym == s_semicolon ) {
+        if(sym == s_semicolon) {
             S_get(&sym);
         } else {
             S_mark(";?");
         }
         locblksize = 0;
         declarations(&locblksize);
-        while(sym == s_procedure ) {
+        while(sym == s_procedure) {
             procedure_decl();
-            if(sym == s_semicolon ) {
+            if(sym == s_semicolon) {
                 S_get(&sym);
             } else {
                 S_mark(";?");
@@ -972,16 +981,16 @@ static void procedure_decl(void) {
         }
         proc->value = G_pc;
         G_enter(locblksize);
-        if(sym == s_begin ) {
+        if(sym == s_begin) {
             S_get(&sym);
             statement_sequence();
         }
-        if(sym == s_end ) {
+        if(sym == s_end) {
             S_get(&sym);
         } else {
             S_mark("END?");
         }
-        if(sym == s_ident ) {
+        if(sym == s_ident) {
             if(strcmp(procid, S_identifier) != 0 ) {
                 S_mark("no match");
             }
@@ -1000,54 +1009,55 @@ static void procedure_decl(void) {
 static void module(void) {
     S_Identifier module_identifier;
     INTEGER varsize;
-    if(sym == s_module ) {
+
+    if(sym == s_module) {
         S_get(&sym);
         G_open();
         open_scope();
         varsize = 0;
-        if(sym == s_ident ) {
+        if(sym == s_ident) {
             strcpy(module_identifier, S_identifier);
             S_get(&sym);
         } else {
             S_mark("ident?");
         }
-        if(sym == s_semicolon ) {
+        if(sym == s_semicolon) {
             S_get(&sym);
         } else {
             S_mark(";?");
         }
         declarations(&varsize);
-        while(sym == s_procedure ) {
+        while(sym == s_procedure) {
             procedure_decl();
-            if(sym == s_semicolon ) {
+            if(sym == s_semicolon) {
                 S_get(&sym);
             } else {
                 S_mark(";?");
             }
         }
         G_header();
-        if(sym == s_begin ) {
+        if(sym == s_begin) {
             S_get(&sym);
             statement_sequence();
         }
-        if(sym == s_end ) {
+        if(sym == s_end) {
             S_get(&sym);
         } else {
             S_mark("END?");
         }
-        if(sym == s_ident ) {
-            if(strcmp(module_identifier, S_identifier) != 0 ) {
+        if(sym == s_ident) {
+            if(strcmp(module_identifier, S_identifier) != 0) {
                 S_mark("no match");
             }
             S_get(&sym);
         } else {
             S_mark("ident?");
         }
-        if(sym != s_period ) {
+        if(sym != s_period) {
             S_mark(". ?");
         }
         close_scope();
-        if(!S_error ) {
+        if(!S_error) {
             G_close(varsize);
         }
     } else {

@@ -24,7 +24,7 @@ extern INTEGER S_value;
 extern S_Identifier S_identifier;
 extern bool S_error;
 
-void S_line_and_column(int* line, int* column);
+void S_line_and_column(size_t *line, size_t *column);
 void S_mark(const char* msg);
 void S_get(S_Symbol* sym);
 void S_init(char *filename, char *a_source_text, int pos);

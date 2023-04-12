@@ -62,10 +62,10 @@ static INTEGER M[R_MEM_SIZE / R_WORD_SIZE];
 INTEGER R_mod(INTEGER x, INTEGER y) {
     require("valid divisor", y != 0);
     x = x % y;
-    if(y < 0 ) {
+    if(y < 0) {
         y = -y;
     }
-    while(x < 0 ) {
+    while(x < 0) {
         x += y;
     }
     ensure("valid remainder", 0 <= x && x < y);
@@ -101,11 +101,11 @@ void R_decode_instruction(INTEGER x, INTEGER* opc, INTEGER* a, INTEGER* b, INTEG
     *opc = (x >> 26) & 0x3f;
     *a = (x >> 22) & 0xf;
     *b = (x >> 18) & 0xf;
-    if(*opc < MOVI ) {
+    if(*opc < MOVI) {
         *c = x & 0xf;
-    } else if(*opc < BEQ ) {
+    } else if(*opc < BEQ) {
         *c = x & 0x3ffff;
-        if(*c >= 0x20000 ) {
+        if(*c >= 0x20000) {
             *c -= 0x40000;
         }
     } else {
@@ -122,15 +122,15 @@ void R_print_instruction(INTEGER x) {
     INTEGER i;
     R_decode_instruction(x, &opc, &a, &b, &c);
     opc_name = "?";
-    for(i = 0; i < R_OPCODE_COUNT; i++ ) {
+    for(i = 0; i < R_OPCODE_COUNT; i++) {
         if(opcode_names[i].opc == opc ) {
             opc_name = opcode_names[i].name;
             break;
         }
     }
-    if(opc < MOVI ) {
+    if(opc < MOVI) {
         printf("%-4s %2d %2d %2d\n", opc_name, a, b, c);
-    } else if(opc < BEQ ) {
+    } else if(opc < BEQ) {
         printf("%-4s %2d %2d %2d\n", opc_name, a, b, c);
     } else {
         printf("%-4s %2d\n", opc_name, c);
@@ -149,10 +149,10 @@ INTEGER R_encode_instruction(INTEGER opc, INTEGER a, INTEGER b, INTEGER c) {
     opc &= 0x3f;
     a &= 0xf;
     b &= 0xf;
-    if(opc < MOVI ) {
+    if(opc < MOVI) {
         exit_if(c < 0 || c > 0xf, "c out of range (%d), F0", c);
         c &= 0xf;
-    } else if(opc < BEQ ) {
+    } else if(opc < BEQ) {
         exit_if(c < -0x20000 || c > 0x1ffff, "c out of range (%d), F1 or F2", c);
         c &= 0x3ffff;
     } else {
@@ -188,129 +188,53 @@ void R_execute(INTEGER start) {
                 "invalid PC (%d)", R[15]);
         IR = M[R[15] / R_WORD_SIZE];
         R_decode_instruction(IR, &opc, &a, &b, &c);
-        if(opc < MOVI ) {
+        if(opc < MOVI) {
             c = R[c & 0xf];
         }
-        switch(opc ) {
+        switch(opc) {
         case MOV:
-        case MOVI:
-            R[a] = ASH(c, b);
-            break;
+        case MOVI: R[a] = ASH(c, b); break;
         case MVN:
-        case MVNI:
-            R[a] = -ASH(c, b);
-            break;
+        case MVNI: R[a] = -ASH(c, b); break;
         case ADD:
-        case ADDI:
-            R[a] = R[b] + c;
-            break;
+        case ADDI: R[a] = R[b] + c; break;
         case SUB:
-        case SUBI:
-            R[a] = R[b] - c;
-            break;
+        case SUBI: R[a] = R[b] - c; break;
         case MUL:
-        case MULI:
-            R[a] = R[b] * c;
-            break;
+        case MULI: R[a] = R[b] * c; break;
         case Div:
-        case DIVI:
-            R[a] = R[b] / c;
-            break;
+        case DIVI: R[a] = R[b] / c; break;
         case Mod:
-        case MODI:
-            R[a] = R_mod(R[b], c);
-            break;
+        case MODI: R[a] = R_mod(R[b], c); break;
         case CMP:
-        case CMPI:
-            Z = R[b] == c;
-            N = R[b] < c;
-            break;
+        case CMPI: Z = R[b] == c; N = R[b] < c; break;
         case CHKI:
-            exit_if(R[a] < 0 || R[a] >= c, \
-                    "CHKI failed (%d, %d)", c, R[a]);
+            exit_if(R[a] < 0 || R[a] >= c, "CHKI failed (%d, %d)", c, R[a]);
             break;
-        case LDW:
-            R[a] = get_M((R[b] + c) / R_WORD_SIZE);
-            break;
-        case LDB:
-            R[a] = get_B(R[b] + c);
-            break;
-        case POP:
-            R[a] = get_M((R[b]) / R_WORD_SIZE);
-            R[b] += c;
-            break;
-        case STW:
-            set_M((R[b] + c) / R_WORD_SIZE, R[a]);
-            break;
-        case STB:
-            set_B(R[b] + c, R[a]);
-            break;
-        case PSH:
-            R[b] -= c;
-            set_M(R[b] / R_WORD_SIZE, R[a]);
-            break;
-        case RD:
-            scanf("%d", &R[a]);
-            break;
-        case WRD:
-            printf(" %d", R[c]);
-            break;
-        case WRH:
-            printf(" %xH", R[c]);
-            break;
-        case WRL:
-            printf("\n");
-            break;
-        case RB:
-            R[a] = getchar();
-            break;
-        case WRB:
-            putchar(R[c]);
-            break;
-        case BEQ:
-            if(Z ) {
-                nextPC = R[15] + c * R_WORD_SIZE;
-            }
-            break;
-        case BNE:
-            if(!Z ) {
-                nextPC = R[15] + c * R_WORD_SIZE;
-            }
-            break;
-        case BLT:
-            if(N ) {
-                nextPC = R[15] + c * R_WORD_SIZE;
-            }
-            break;
-        case BGE:
-            if(!N ) {
-                nextPC = R[15] + c * R_WORD_SIZE;
-            }
-            break;
-        case BLE:
-            if(Z || N ) {
-                nextPC = R[15] + c * R_WORD_SIZE;
-            }
-            break;
-        case BGT:
-            if(!Z && !N ) {
-                nextPC = R[15] + c * R_WORD_SIZE;
-            }
-            break;
-        case BR:
-            nextPC = R[15] + c * R_WORD_SIZE;
-            break;
-        case BSR:
-            nextPC = R[15] + c * R_WORD_SIZE;
-            R[14] = R[15] + R_WORD_SIZE;
-            break;
-        case RET:
-            nextPC = R[c & 0xf];
-            break;
-        default:
-            exit_if(true, "invalid opcode (%d)", opc);
-        };
-        if(nextPC == 0 ) {
+        case LDW:  R[a] = get_M((R[b] + c) / R_WORD_SIZE); break;
+        case LDB:  R[a] = get_B(R[b] + c); break;
+        case POP:  R[a] = get_M((R[b]) / R_WORD_SIZE); R[b] += c; break;
+        case STW:  set_M((R[b] + c) / R_WORD_SIZE, R[a]); break;
+        case STB:  set_B(R[b] + c, R[a]); break;
+        case PSH:  R[b] -= c; set_M(R[b] / R_WORD_SIZE, R[a]); break;
+        case RD:   scanf("%d", &R[a]); break;
+        case WRD:  printf(" %d", R[c]); break;
+        case WRH:  printf(" %xH", R[c]); break;
+        case WRL:  printf("\n"); break;
+        case RB:   R[a] = getchar(); break;
+        case WRB:  putchar(R[c]); break;
+        case BEQ:  if(Z) { nextPC = R[15] + c * R_WORD_SIZE; } break;
+        case BNE:  if(!Z) { nextPC = R[15] + c * R_WORD_SIZE; } break;
+        case BLT:  if(N) { nextPC = R[15] + c * R_WORD_SIZE; } break;
+        case BGE:  if(!N) { nextPC = R[15] + c * R_WORD_SIZE; } break;
+        case BLE:  if(Z || N) { nextPC = R[15] + c * R_WORD_SIZE; } break;
+        case BGT:  if(!Z && !N) { nextPC = R[15] + c * R_WORD_SIZE; } break;
+        case BR:   nextPC = R[15] + c * R_WORD_SIZE; break;
+        case BSR:  nextPC = R[15] + c * R_WORD_SIZE; R[14] = R[15] + R_WORD_SIZE; break;
+        case RET:  nextPC = R[c & 0xf]; break;
+        default:   exit_if(true, "invalid opcode (%d)", opc);
+        }
+        if(nextPC == 0) {
             break;
         }
         R[15] = nextPC;
@@ -325,7 +249,7 @@ void R_load(INTEGER* code, INTEGER len) {
     INTEGER i;
     require_not_null(code);
     require("valid length", len >= 0 && R_PROG_ORG + R_WORD_SIZE * len <= R_MEM_SIZE);
-    for(i = 0; i < len; i++ ) {
+    for(i = 0; i < len; i++) {
         M[i + R_PROG_ORG / R_WORD_SIZE] = code[i];
     }
 }
@@ -334,7 +258,7 @@ void R_print_code(INTEGER* code, INTEGER len) {
     INTEGER i;
     require_not_null(code);
     require("not negative", len >= 0);
-    for(i = 0; i < len; i++ ) {
+    for(i = 0; i < len; i++) {
         printf("%3ld ", i);
         R_print_instruction(code[i]);
     }
@@ -346,22 +270,22 @@ given length.
 */
 void R_print_memory(int from, int to, int row_length) {
     int i, j;
-    if(from < 0 ) {
+    if(from < 0) {
         from = 0;
     }
-    if(to > R_MEM_SIZE ) {
+    if(to > R_MEM_SIZE) {
         to = R_MEM_SIZE;
     }
-    if(row_length < 1 ) {
+    if(row_length < 1) {
         row_length = 1;
     }
     i = from;
-    while(i < to ) {
+    while(i < to) {
         assert("valid index", 0 <= i && i < R_MEM_SIZE);
-        for(j = 0; j < row_length; j++ ) {
+        for(j = 0; j < row_length; j++) {
             printf("%4ld: %6ld ", i, M[i]);
             i++;
-            if(i >= to ) {
+            if(i >= to) {
                 break;
             }
         }

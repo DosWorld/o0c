@@ -102,17 +102,17 @@ static int source_text_pos_token;
 
 #define ORD(ch) ((ch) & 0xff)
 
-void S_line_and_column(int* line, int* column) {
-    int i;
+void S_line_and_column(size_t *line, size_t *column) {
+    size_t i;
     *line = 1;
     *column = 1;
-    for(i = 0; i < source_text_pos_token && (source_text[i] != 0); i++ ) {
+    for(i = 0; i < source_text_pos_token && (source_text[i] != 0); i++) {
         char c = source_text[i];
         if(c == 0x0A ) {
-            *line += 1;
+            *line++;
             *column = 1;
         } else {
-            *column += 1;
+            *column++;
         }
     }
 }
@@ -123,7 +123,7 @@ byte offset from the start of the source text. Only a single message per
 position is output.
 */
 void S_mark(const char* msg) {
-    int line, column;
+    size_t line, column;
     S_error = true;
     if(source_text_pos_token >= errpos ) {
         S_line_and_column(&line, &column);
@@ -133,7 +133,7 @@ void S_mark(const char* msg) {
 }
 
 static void print_symbol(S_Symbol sym) {
-    int i;
+    size_t i;
     char* sym_name = "s_unknown";
     for(i = 0; i < S_SYMBOL_COUNT; i++ ) {
         if(symbol_names[i].sym == sym ) {
@@ -174,15 +174,15 @@ static void identifier(S_Symbol* sym) {
         read(&ch);
     } while ((ch >= '0' && ch <= '9') || (toupper(ch) >= 'A' && toupper(ch) <= 'Z'));
     S_identifier[i] = '\0';
-    if(i >= S_IDENTIFIER_LENGTH ) {
+    if(i >= S_IDENTIFIER_LENGTH) {
         S_mark("identifier too long");
     }
 
     k = 0;
-    while(k < KEYWORD_COUNT && strcmp(S_identifier, keyword_table[k].id) != 0 ) {
+    while(k < KEYWORD_COUNT && strcmp(S_identifier, keyword_table[k].id) != 0) {
         k++;
     }
-    if(k < KEYWORD_COUNT ) {
+    if(k < KEYWORD_COUNT) {
         *sym = keyword_table[k].sym;
     } else {
         *sym = s_ident;
@@ -202,7 +202,7 @@ static void number(S_Symbol* sym) {
         }
         read(&ch);
     } while (ch >= '0' && ch <= '9');
-    if(too_large ) {
+    if(too_large) {
         S_mark("number too large");
         S_value = 0;
     }
@@ -212,26 +212,26 @@ static void comment(S_Symbol* sym) {
     read(&ch);
     while (true) {
         while (true) {
-            while(ch == '(' ) {
+            while(ch == '(') {
                 read(&ch);
-                if(ch == '*' ) {
+                if(ch == '*') {
                     comment(sym);
                 }
             }
-            if(ch == '*' ) {
+            if(ch == '*') {
                 read(&ch);
                 break;
             }
-            if(read_eot() ) {
+            if(read_eot()) {
                 break;
             }
             read(&ch);
         }
-        if(ch == ')' ) {
+        if(ch == ')') {
             read(&ch);
             break;
         }
-        if(read_eot() ) {
+        if(read_eot()) {
             S_mark("comment not terminated");
             break;
         }
@@ -239,14 +239,16 @@ static void comment(S_Symbol* sym) {
 }
 
 void S_get(S_Symbol* sym) {
-    while(!read_eot() && ch <= ' ' ) {
+    S_identifier[0] = 0;
+    S_value = 0;
+    while(!read_eot() && ch <= ' ') {
         read(&ch);
     }
     source_text_pos_token = source_text_pos - 1;
-    if(read_eot() ) {
+    if(read_eot()) {
         *sym = s_eof;
     } else {
-        switch(ch ) {
+        switch(ch) {
         case '&':
             read(&ch);
             *sym = s_and;
@@ -273,7 +275,7 @@ void S_get(S_Symbol* sym) {
             break;
         case '<': {
             read(&ch);
-            if(ch == '=' ) {
+            if(ch == '=') {
                 read(&ch);
                 *sym = s_leq;
             } else {
@@ -283,7 +285,7 @@ void S_get(S_Symbol* sym) {
         }
         case '>': {
             read(&ch);
-            if(ch == '=' ) {
+            if(ch == '=') {
                 read(&ch);
                 *sym = s_geq;
             } else {
@@ -301,7 +303,7 @@ void S_get(S_Symbol* sym) {
             break;
         case ':': {
             read(&ch);
-            if(ch == '=' ) {
+            if(ch == '=') {
                 read(&ch);
                 *sym = s_becomes;
             } else {
@@ -315,7 +317,7 @@ void S_get(S_Symbol* sym) {
             break;
         case '(': {
             read(&ch);
-            if(ch == '*' ) {
+            if(ch == '*') {
                 comment(sym);
 
                 S_get(sym);
@@ -364,9 +366,6 @@ void S_init(char *filename, char *a_source_text, int pos) {
     source_text = a_source_text;
     source_text_pos = pos;
     source_text_pos_token = pos;
-    S_value = 0;
-    S_identifier[0] = '\0';
-    ch = '\0';
     S_error = false;
     errpos = pos;
     read(&ch);

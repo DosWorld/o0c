@@ -11,12 +11,12 @@
 #include <stdbool.h>
 #include <string.h>
 
-char *read_file(char* name);
+extern char *read_file(char* name);
 
 #define Set long
 
 Set make_set(void);
-bool in(int x, Set s);
+char in(int x, Set s);
 void incl(Set* s, int x);
 void excl(Set* s, int x);
 
